@@ -1,0 +1,129 @@
+---
+title: "parliament"
+author: "Bhargava"
+date: "07 Decemeber 2017"
+output: html_document
+---
+
+reading the data
+```{r}
+parliament_dt<-read.csv(file="D:/Data Visualization/GG_plot/parliament/parliament.csv",header=TRUE)
+str(parliament_dt)
+summary(parliament_dt)
+```
+
+```{r}
+no_of_election<-unique(parliament_dt$YEAR)
+length(no_of_election)
+total_parties<-unique(parliament_dt$PARTY)
+length(total_parties)
+```
+```{r}
+parliament_dt%>%group_by(YEAR)%>%summarise(parties_yearwise=length(unique(PARTY)))
+```
+total no of candidates from INC yearwise
+```{r}
+inc_candidates<-parliament_dt%>%filter(PARTY=="INC")%>%group_by(YEAR)%>%summarise(candidates=n())
+inc_candidates
+```
+
+total number of candidates who won from INC yearwise
+```{r}
+parliament_dt%>%filter(PARTY=="INC"& Position==1)%>%group_by(YEAR)%>%summarise(candidates=n())
+```
+
+```{r}
+library(ggplot2)
+library(knitr)
+g<-ggplot(inc_candidates,aes(x=YEAR,y=candidates))+geom_bar(stat="identity")
+plot(g)
+```
+
+```{r}
+g<-g+coord_flip()
+plot(g)
+```
+top ten parties
+```{r}
+parties_top<-parliament_dt%>%filter(Position==1)%>%group_by(PARTY)%>%summarise(wins=n())%>%arrange(-wins)%>%head(10)
+parties_top_names=parties_top$PARTY
+parties_top_names
+data_top_parties=parliament_dt%>%filter(PARTY%in%parties_top_names)
+dim(data_top_parties)
+```
+```{r}
+top_parties_wins<-data_top_parties%>%filter(Position==1)%>%group_by(YEAR,PARTY)%>%summarise(wins=n())
+top_parties_wins
+```
+
+```{r}
+ggplot(top_parties_wins,aes(x=YEAR,y=wins,fill=PARTY))+geom_bar(stat="identity")
+```
+statewise number of wins by top ten parties for the year 2009
+```{r}
+states_pc_summary<-parliament_dt%>%filter(YEAR==2009)%>%group_by(STATE,PC)%>%summarise(ELECTORS=(min(ELECTORS)))
+states_summary<-states_pc_summary%>%group_by(STATE)%>%summarise(ELECTORS=sum(ELECTORS))%>%arrange(-ELECTORS)%>%head(10)
+
+data_top_states<-parliament_dt%>%filter(STATE%in%states_summary$STATE)
+states_summary
+
+states_party_summary=data_top_states%>%filter(YEAR==2009,Position==1,PARTY%in%parties_top_names)%>%group_by(STATE,PARTY)%>%summarise(wins=n())
+states_party_summary
+ggplot(states_party_summary,aes(x=STATE,y=wins,fill=PARTY))+geom_bar(stat="identity")
+```
+For the state karnataka compute total votes,total electors,and % votes.
+```{r}
+karnataka_VOTES<-parliament_dt%>%filter(STATE=="KARNATAKA")%>%group_by(YEAR,PC)%>%summarise(VOTES=sum(VOTES,na.rm=TRUE),ELECTORS=min(ELECTORS))%>%group_by(YEAR)%>%summarise(VOTES=sum(VOTES),ELECTORS=sum(ELECTORS),per_votes=VOTES/ELECTORS*100)
+karnataka_VOTES
+```
+
+```{r}
+karnataka_VOTES$YEAR=as.factor(karnataka_VOTES$YEAR)
+ggplot(karnataka_VOTES,aes(x=YEAR,y=ELECTORS,fill=per_votes))+geom_bar(stat="identity")
+```
+#Top ten Parties
+
+```{r}
+Top_Ten_Parties<-parliament_dt%>%filter(Position==1)%>%group_by(PARTY)%>%summarise(Winners=n())%>%arrange(desc(Winners))%>%head(10)
+```
+#Total number of winning seats
+
+```{r}
+Total_no_winning<-parliament_dt%>%filter(PARTY %in% Top_Ten_Parties$PARTY & Position==1)%>%group_by(PARTY)%>%summarise(Winners=n())%>%arrange(-Winners)
+print(Total_no_winning)
+topparties=Total_no_winning$PARTY
+
+
+```
+
+```{r}
+summari=parliament_dt%>%filter(Position==1,PARTY%in%topparties)%>%group_by(YEAR,PARTY)%>%summarise(wins=n())
+summari
+
+ggplot(summari,aes(x=PARTY,y=wins))+geom_bar(stat = 'identity')+facet_wrap(~YEAR)
+
+summari$YEAR=as.factor(summari$YEAR)
+ggplot(summari,aes(y=PARTY,x=YEAR,fill=wins))+geom_tile()
+```
+
+```{r}
+
+Top_Ten_cand<-parliament_dt%>%filter(Position==1)%>%group_by(NAME)%>%summarise(Winners=n())%>%arrange(desc(Winners))%>%head(10)
+
+Total_cand_winyear<-parliament_dt%>%filter(NAME %in% Top_Ten_cand$NAME & Position==1)%>%group_by(NAME,YEAR)%>%summarise(Wins=sum(Position==1))
+print(Total_cand_winyear)
+
+Total_cand_winyear$YEAR=as.factor(Total_cand_winyear$YEAR)
+ggplot(Total_cand_winyear,aes(x=YEAR,y=NAME,fill=Wins))+geom_tile()
+```
+
+# karnataka party wins
+```{r}
+Top_Ten_kanad<-parliament_dt%>%filter(Position==1 & STATE== 'KARNATAKA')%>%group_by(PARTY)%>%summarise(Winners=n())%>%arrange(desc(Winners))%>%head(10)
+
+Total_Kanad_winyear<-parliament_dt%>%filter(PARTY %in% Top_Ten_kanad$PARTY & Position==1 & STATE=='KARNATAKA')%>%group_by(PARTY,YEAR)%>%summarise(Wins=sum(Position==1))
+print(Total_Kanad_winyear)
+
+Total_Kanad_winyear$YEAR=as.factor(Total_Kanad_winyear$YEAR)
+ggplot(Total_Kanad_winyear,aes(x=YEAR,y=PARTY,fill=Wins))+geom_tile()
+```
